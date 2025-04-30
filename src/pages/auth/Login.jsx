@@ -28,6 +28,7 @@ const Login = () => {
       setLoading(false);
     }
   };
+ 
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -74,6 +75,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
+                
               </div>
             </div>
             

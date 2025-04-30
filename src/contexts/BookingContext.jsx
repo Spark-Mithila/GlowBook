@@ -1,17 +1,8 @@
+// src/contexts/BookingContext.jsx
+
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc,
-  doc
-} from "firebase/firestore";
+import BookingService from "../services/BookingService";
 import { useAuth } from "./AuthContext";
-import { db } from "../services/Firebase";
 
 const BookingContext = createContext();
 
@@ -21,74 +12,156 @@ export function useBookings() {
 
 export function BookingProvider({ children }) {
   const [bookings, setBookings] = useState([]);
+  const [upcomingBookings, setUpcomingBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { currentUser } = useAuth();
+  const [error, setError] = useState(null);
+  const [stats, setStats] = useState({
+    totalBookings: 0,
+    totalCustomers: 0,
+    totalRevenue: 0
+  });
+  
+  const { currentUser, isAuthenticated } = useAuth();
 
-  useEffect(() => {
-    async function fetchBookings() {
-      if (currentUser) {
-        const bookingsRef = collection(db, "bookings");
-        const q = query(
-          bookingsRef,
-          where("ownerId", "==", currentUser.uid),
-          orderBy("appointmentTime", "desc")
-        );
-        
-        const querySnapshot = await getDocs(q);
-        const bookingsData = [];
-        
-        querySnapshot.forEach((doc) => {
-          bookingsData.push({
-            id: doc.id,
-            ...doc.data()
-          });
-        });
-        
-        setBookings(bookingsData);
-      } else {
-        setBookings([]);
-      }
+  // Fetch all bookings
+  const fetchBookings = async () => {
+    if (!isAuthenticated) {
+      setBookings([]);
+      setUpcomingBookings([]);
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await BookingService.getAllBookings();
+      setBookings(data);
+    } catch (err) {
+      setError("Failed to fetch bookings. Please try again.");
+      console.error(err);
+    } finally {
       setLoading(false);
     }
+  };
 
-    fetchBookings();
-  }, [currentUser]);
-
-  async function addBooking(bookingData) {
-    const newBooking = {
-      ...bookingData,
-      ownerId: currentUser.uid,
-      createdAt: new Date()
-    };
+  // Fetch upcoming bookings
+  const fetchUpcomingBookings = async (limit = 5) => {
+    if (!isAuthenticated) return;
     
-    const docRef = await addDoc(collection(db, "bookings"), newBooking);
-    setBookings([...bookings, { id: docRef.id, ...newBooking }]);
-    return docRef;
-  }
+    try {
+      const data = await BookingService.getUpcomingBookings(limit);
+      setUpcomingBookings(data);
+    } catch (err) {
+      console.error("Error fetching upcoming bookings:", err);
+    }
+  };
 
-  async function updateBooking(id, bookingData) {
-    await updateDoc(doc(db, "bookings", id), bookingData);
-    setBookings(bookings.map(booking => 
-      booking.id === id ? { ...booking, ...bookingData } : booking
-    ));
-  }
+  // Fetch booking statistics
+  const fetchBookingStats = async () => {
+    if (!isAuthenticated) return;
+    
+    try {
+      const data = await BookingService.getBookingStats();
+      setStats(data);
+    } catch (err) {
+      console.error("Error fetching booking stats:", err);
+    }
+  };
 
-  async function deleteBooking(id) {
-    await deleteDoc(doc(db, "bookings", id));
-    setBookings(bookings.filter(booking => booking.id !== id));
-  }
+  // Initial data fetching
+  useEffect(() => {
+    fetchBookings();
+    fetchUpcomingBookings();
+    fetchBookingStats();
+  }, [isAuthenticated]);
+
+  // Add a new booking
+  const addBooking = async (bookingData) => {
+    try {
+      setLoading(true);
+      const newBooking = await BookingService.createBooking(bookingData);
+      setBookings(prevBookings => [...prevBookings, newBooking]);
+      await fetchUpcomingBookings(); // Refresh upcoming bookings
+      await fetchBookingStats(); // Update stats
+      return newBooking;
+    } catch (err) {
+      setError("Failed to create booking. Please try again.");
+      console.error(err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update a booking
+  const updateBooking = async (id, bookingData) => {
+    try {
+      setLoading(true);
+      const updatedBooking = await BookingService.updateBooking(id, bookingData);
+      setBookings(prevBookings => 
+        prevBookings.map(booking => booking.id === id ? updatedBooking : booking)
+      );
+      await fetchUpcomingBookings(); // Refresh upcoming bookings
+      return updatedBooking;
+    } catch (err) {
+      setError("Failed to update booking. Please try again.");
+      console.error(err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Delete a booking
+  const deleteBooking = async (id) => {
+    try {
+      setLoading(true);
+      await BookingService.deleteBooking(id);
+      setBookings(prevBookings => prevBookings.filter(booking => booking.id !== id));
+      await fetchUpcomingBookings(); // Refresh upcoming bookings
+      await fetchBookingStats(); // Update stats
+    } catch (err) {
+      setError("Failed to delete booking. Please try again.");
+      console.error(err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Refresh all booking data
+  const refreshBookingData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        fetchBookings(),
+        fetchUpcomingBookings(),
+        fetchBookingStats()
+      ]);
+    } catch (err) {
+      console.error("Error refreshing booking data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const value = {
     bookings,
+    upcomingBookings,
+    stats,
     loading,
+    error,
     addBooking,
     updateBooking,
-    deleteBooking
+    deleteBooking,
+    refreshBookingData,
+    fetchUpcomingBookings
   };
 
   return (
     <BookingContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </BookingContext.Provider>
   );
 }
