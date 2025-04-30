@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import Button from '../../components/common/Button';
+// Fix 1: Import icons directly from lucide-react
 import { Mail, Lock, AlertCircle } from 'lucide-react';
 
 const Login = () => {
@@ -45,7 +46,8 @@ const Login = () => {
         
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center">
-            <AlertCircle className="mr-2" size={20} />
+            {/* Fix 2: Render icon with explicit dimensions and stroke */}
+            <AlertCircle className="mr-2" size={20} strokeWidth={2} />
             <span>{error}</span>
           </div>
         )}
@@ -58,7 +60,8 @@ const Login = () => {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
+                  {/* Fix 3: Add explicit dimensions and color */}
+                  <Mail className="h-5 w-5 text-gray-400" size={20} strokeWidth={1.5} />
                 </div>
                 <input
                   id="email"
@@ -80,7 +83,8 @@ const Login = () => {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
+                  {/* Fix 4: Add explicit dimensions and color */}
+                  <Lock className="h-5 w-5 text-gray-400" size={20} strokeWidth={1.5} />
                 </div>
                 <input
                   id="password"
