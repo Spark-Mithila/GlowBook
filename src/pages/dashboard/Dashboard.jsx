@@ -6,7 +6,7 @@ import Button from '../../components/common/Button';
 import { useBookings } from '../../contexts/BookingContext';
 import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
-import { db } from '../../services/Firebase';
+import { db } from '../../services/firebase';
 
 const Dashboard = () => {
   const { bookings } = useBookings();

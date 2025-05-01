@@ -21,7 +21,7 @@ export function BookingProvider({ children }) {
     totalRevenue: 0
   });
   
-  const { currentUser, isAuthenticated } = useAuth();
+  const { _currentUser, isAuthenticated } = useAuth();
 
   // Fetch all bookings
   const fetchBookings = async () => {

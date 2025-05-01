@@ -1,7 +1,5 @@
 // src/services/CustomerService.js
 
-// import axios from 'axios';
-
 // Reuse the same axios instance from BookingService
 import { apiClient } from './apiClient';
 

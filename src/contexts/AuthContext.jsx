@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { apiClient } from "../services/apiClient";
+import { auth } from "../services/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 const AuthContext = createContext();
 
@@ -51,18 +53,39 @@ export function AuthProvider({ children }) {
     try {
       setLoading(true);
       setError(null);
-      
-      const response = await apiClient.post('/auth/login', { email, password });
-      const { token, user } = response.data;
-      
-      // Store token
-      localStorage.setItem('token', token);
-      
-      // Update state
-      setCurrentUser(user);
-      setUserRole(user.role);
-      setIsAuthenticated(true);
-      
+        // Authenticate directly with Firebase
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        // Get the Firebase ID token to use with your backend
+        const idToken = await user.getIdToken();
+        
+        // Store the token in localStorage for backend API calls
+        localStorage.setItem('token', idToken);
+        
+        // Optional: Call your backend to initialize user session
+        // This is where your Node.js backend can take over
+        try {
+          const response = await apiClient.get('/auth/me')
+          
+          if (!response.status == 200) {
+            throw new Error('Failed to initialize session on server');
+          }
+          
+          // Optional: Get user data from your backend
+          const userData = response.data;
+          if(userData.status == 'success') {
+            setCurrentUser(user);
+            setUserRole(userData.data.role);
+            setIsAuthenticated(true);
+          }
+  
+          
+          // You could store user data in a context or localStorage if needed
+        } catch (backendError) {
+          console.error('Backend initialization error:', backendError);
+          // You might want to handle this differently depending on your app's requirements
+        }
       return user;
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
